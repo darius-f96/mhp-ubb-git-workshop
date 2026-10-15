@@ -1,0 +1,23 @@
+name: Verify Ledger Sum
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Same script students run locally: python scripts/verify_sum.py
+      - name: Validate Total
+        run: python scripts/verify_sum.py index.html

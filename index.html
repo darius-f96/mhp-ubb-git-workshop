@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workshop Ledger &mdash; a Git exercise</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #101828;
+    --muted: #5b6472;
+    --line: #e3e7ec;
+    --accent: #2f6feb;
+    --accent-soft: #eaf1fe;
+    --ok: #06764a;
+    --ok-soft: #e7f6ee;
+    --bad: #b42318;
+    --bad-soft: #fdecea;
+    --warn: #93370d;
+    --warn-soft: #fdf3e7;
+    --code-bg: #121722;
+    --code-ink: #e6e9ef;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .hero {
+    background: linear-gradient(160deg, #101828 0%, #1b2a4a 60%, #24406e 100%);
+    color: #fff;
+    padding: 44px 24px 40px;
+  }
+
+  .hero-inner, main { max-width: 900px; margin: 0 auto; }
+
+  .hero h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: -0.02em; }
+
+  .hero .lede {
+    margin: 0 0 20px;
+    max-width: 62ch;
+    color: #c7d2e4;
+    font-size: 17px;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 13px;
+    color: #e6ecf7;
+  }
+
+  main { padding: 28px 24px 8px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  }
+
+  .card > h2 {
+    margin: 0 0 4px;
+    font-size: 21px;
+    letter-spacing: -0.01em;
+  }
+
+  .card > .sub { margin: 0 0 18px; color: var(--muted); font-size: 15px; }
+
+  h3 { font-size: 16px; margin: 22px 0 8px; }
+
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: #f1f3f6;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+
+  /* ---- ledger table ---- */
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+
+  table#ledger { border-collapse: collapse; width: 100%; min-width: 520px; }
+
+  table#ledger th, table#ledger td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  table#ledger thead th {
+    background: #f2f4f7;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  table#ledger tbody tr:last-child td { border-bottom: 0; }
+
+  table#ledger tbody tr.entry-row:hover td { background: #fafbfc; }
+
+  table#ledger td.num {
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  table#ledger td.notes { color: var(--muted); font-size: 15px; }
+
+  table#ledger tr.total-row td {
+    font-weight: 700;
+    background: var(--accent-soft);
+    border-top: 2px solid var(--accent);
+  }
+
+  table#ledger tr.total-row td:last-child { font-weight: 400; color: var(--muted); font-size: 14px; }
+
+  /* ---- callouts ---- */
+
+  .note, .warn, .tip {
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 15px;
+    border: 1px solid;
+  }
+
+  .note > :first-child, .warn > :first-child, .tip > :first-child { margin-top: 0; }
+  .note > :last-child, .warn > :last-child, .tip > :last-child { margin-bottom: 0; }
+
+  .note { background: var(--accent-soft); border-color: #cddffb; color: #1b3a75; }
+  .warn { background: var(--warn-soft); border-color: #f6ddb9; color: var(--warn); }
+  .tip  { background: var(--ok-soft);   border-color: #bfe6cd; color: var(--ok); }
+
+  .note strong, .warn strong, .tip strong { color: inherit; }
+
+  /* ---- code blocks ---- */
+
+  .code { position: relative; margin: 12px 0; }
+
+  .code pre {
+    margin: 0;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 16px 18px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.65;
+    tab-size: 2;
+  }
+
+  .code pre code {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+    white-space: pre;
+  }
+
+  .copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #dfe5ef;
+    border-radius: 6px;
+    padding: 2px 9px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+
+  .code:hover .copy, .copy:focus-visible { opacity: 1; }
+  .copy.is-copied { background: var(--ok); border-color: var(--ok); color: #fff; opacity: 1; }
+
+  .conflict pre { background: #2a1416; color: #f6d5d2; }
+
+  /* ---- ordered steps ---- */
+
+  ol.steps { counter-reset: step; list-style: none; margin: 0; padding: 0; }
+
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 18px 44px;
+    border-left: 2px solid var(--line);
+    margin-left: 15px;
+  }
+
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -16px;
+    top: -2px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  ol.steps > li > strong { display: block; margin-bottom: 2px; }
+  ol.steps > li > span { color: var(--muted); font-size: 15px; }
+
+  /* ---- accordions ---- */
+
+  details {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  details[open] { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06); }
+
+  summary {
+    cursor: pointer;
+    padding: 13px 16px;
+    font-weight: 600;
+    font-size: 15px;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+  }
+
+  summary::-webkit-details-marker { display: none; }
+
+  summary::before {
+    content: "+";
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 15px;
+    line-height: 20px;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  details[open] summary::before { content: "\2212"; }
+  details[open] summary { border-bottom: 1px solid var(--line); }
+
+  .details-body { padding: 4px 16px 16px; }
+  .details-body > p:first-child { margin-top: 12px; }
+
+  ul.tight, ol.tight { margin: 8px 0; padding-left: 22px; }
+  ul.tight li, ol.tight li { margin-bottom: 4px; }
+
+  table.matrix { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+  table.matrix th, table.matrix td {
+    border: 1px solid var(--line);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.matrix th { background: #f2f4f7; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  table.matrix td.center { text-align: center; }
+
+  .pass { color: var(--ok); font-weight: 700; }
+  .fail { color: var(--bad); font-weight: 700; }
+
+  footer {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 8px 24px 40px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  @media (max-width: 600px) {
+    .hero { padding: 32px 18px; }
+    .hero h1 { font-size: 26px; }
+    main { padding: 20px 14px 0; }
+    .card { padding: 18px; border-radius: 12px; }
+    .copy { opacity: 1; }
+  }
+
+  @media print {
+    .hero { background: #101828; -webkit-print-color-adjust: exact; }
+    .copy { display: none; }
+    details { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <h1>Workshop Ledger</h1>
+    <p class="lede">
+      One HTML file. Everyone adds one row and re-adds the total by hand.
+      Almost nobody gets it right on the first try &mdash; and that is exactly
+      what this workshop is for.
+    </p>
+    <div class="chips">
+      <span class="chip">1 file to edit</span>
+      <span class="chip">1 CI check</span>
+      <span class="chip">branches &middot; commits &middot; pull &middot; push &middot; PRs &middot; conflicts</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- =========================================================
+       THE LEDGER
+       The CI reads this table only. Keep, unchanged:
+         - the table id "ledger"
+         - three cells per row, the number one carrying class "num"
+         - exactly one cell with id "total", inside the total row
+       ========================================================== -->
+  <section class="card" id="ledger-card">
+    <h2>The ledger</h2>
+    <p class="sub">Add your row directly above the <strong>Total</strong> row, then recompute the total.</p>
+
+    <div class="table-wrap">
+      <table id="ledger">
+        <thead>
+          <tr>
+            <th scope="col">Participant</th>
+            <th scope="col">Number</th>
+            <th scope="col">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="entry-row">
+            <td class="name">Instructor</td>
+            <td class="num">10</td>
+            <td class="notes">Initial seed</td>
+          </tr>
+          <!-- Add your own <tr class="entry-row"> right here, above the total row. -->
+          <tr class="total-row">
+            <td>Total</td>
+            <td id="total">10</td>
+            <td class="notes">Sum of the Number column, computed by hand</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn">
+      <p><strong>Rules for your row.</strong> The CI enforces the formatting ones &mdash; break any of those and your pull request goes red:</p>
+      <ul class="tight">
+        <li>Exactly three cells per row, in the order <em>Participant</em>, <em>Number</em>, <em>Notes</em>.</li>
+        <li>Pick a number between <strong>1 and 99</strong>, so the column stays easy to add by hand once the whole group has joined.</li>
+        <li>The Number cell keeps its <code>class="num"</code> and holds a plain integer &mdash; <code>7</code>, not <code>7 points</code>, not <code>3.5</code>, not <code>1&nbsp;000</code>.</li>
+        <li>Your row goes <strong>above</strong> the total row, inside <code>&lt;tbody&gt;</code>.</li>
+        <li>There is exactly one <code>id="total"</code> cell in the whole file. Never duplicate the total row.</li>
+        <li>You must update the total yourself. Nothing on this page computes it for you &mdash; on purpose.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       THE TASK
+       ========================================================== -->
+  <section class="card" id="task">
+    <h2>Your task</h2>
+    <p class="sub">Six steps. Budget about ten minutes; most of it is waiting on other people's pull requests.</p>
+
+    <ol class="steps">
+      <li>
+        <strong>Get the repository onto your machine</strong>
+        <span>Accept the GitHub invite (or fork), then <code>git clone</code>.</span>
+      </li>
+      <li>
+        <strong>Create your own branch</strong>
+        <span>Never work on <code>main</code>. Name it after you, e.g. <code>add-row-ana</code>.</span>
+      </li>
+      <li>
+        <strong>Add your row and pick a number</strong>
+        <span>Insert it directly above the <strong>Total</strong> row.</span>
+      </li>
+      <li>
+        <strong>Re-add the Number column by hand</strong>
+        <span>Write the new sum into the total cell. Count <em>every</em> row, not just yours.</span>
+      </li>
+      <li>
+        <strong>Check it locally, then commit and push</strong>
+        <span><code>python scripts/verify_sum.py</code> runs the exact CI check on your laptop.</span>
+      </li>
+      <li>
+        <strong>Open a pull request and resolve the conflict</strong>
+        <span>You will hit one. Everybody does. Section below explains why.</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- =========================================================
+       STEP BY STEP
+       ========================================================== -->
+  <section class="card" id="guide">
+    <h2>Step by step</h2>
+    <p class="sub">Open what you need. Every command below is copy-pasteable; replace the values in <code>ALL-CAPS</code>.</p>
+
+    <details open>
+      <summary>1. Get the code</summary>
+      <div class="details-body">
+        <p><strong>If you were invited as a collaborator</strong> (the usual case here), accept the invite email first, then:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git clone https://github.com/darius-f96/mhp-ubb-git-workshop.git
+cd mhp-ubb-git-workshop</code></pre></div>
+
+        <p><strong>If you are working from a fork</strong> instead, fork on GitHub, then add the original as <code>upstream</code> so you can sync later:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git clone https://github.com/YOUR-USERNAME/mhp-ubb-git-workshop.git
+cd mhp-ubb-git-workshop
+git remote add upstream https://github.com/darius-f96/mhp-ubb-git-workshop.git</code></pre></div>
+
+        <p>Either way, check where you are:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git status
+git log --oneline -5</code></pre></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>2. Create your branch</summary>
+      <div class="details-body">
+        <p>Make sure <code>main</code> is current, then branch off it:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git switch main
+git pull
+git switch -c add-row-YOURNAME</code></pre></div>
+        <p><code>git status</code> should now say <em>On branch add-row-YOURNAME</em>. A branch is a cheap, independent line of history &mdash; creating one costs nothing, and it is what lets twenty people edit the same file at the same time without stepping on each other.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>3. Add your row</summary>
+      <div class="details-body">
+        <p>Open <code>index.html</code> in any editor. Find the marker comment near the bottom of the table body and paste your row directly below it, <strong>above</strong> the total row:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>&lt;tr class="entry-row"&gt;
+  &lt;td class="name"&gt;Your Name&lt;/td&gt;
+  &lt;td class="num"&gt;0&lt;/td&gt;
+  &lt;td class="notes"&gt;anything you want us to know&lt;/td&gt;
+&lt;/tr&gt;</code></pre></div>
+        <p>Replace <code>Your Name</code> with your real name and <code>0</code> with the number you picked. Notes are optional &mdash; leave the cell empty but keep the <code>&lt;td&gt;</code>, otherwise the row has two cells instead of three and the check fails.</p>
+        <div class="tip">
+          <p>Indentation is not decoration here. Match the surrounding rows exactly: the more similar two branches look, the smaller and clearer the conflict will be when they meet.</p>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>4. Update the total</summary>
+      <div class="details-body">
+        <p>Add up every number in the <strong>Number</strong> column &mdash; the seed row, everyone already merged, and you &mdash; and write the result into the total cell:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>&lt;td id="total"&gt;42&lt;/td&gt;</code></pre></div>
+        <p>This is the part that breaks. Your sum is correct <em>for the file as it looks on your branch right now</em>. By the time your pull request is merged, someone else's row will have landed too, and the total you wrote will be stale. That is not a mistake on your part; it is a property of concurrent work, and it is the lesson.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>5. Check it locally</summary>
+      <div class="details-body">
+        <p>Before you commit, run the same check the CI runs:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>python scripts/verify_sum.py</code></pre></div>
+        <p>A passing run looks like this:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>Ledger: /path/to/index.html
+
+    #  Participant  Number  Notes
+    1  Instructor       10  Initial seed
+    2  Ana               7  first try
+
+  Rows:             2
+  Sum of rows:      17
+  Declared total:   17 (line 214)
+  Difference:       +0
+
+PASSED - 2 row(s) sum to 17 and the declared total is 17.</code></pre></div>
+        <p>Python 3 is the only requirement &mdash; the script uses nothing outside the standard library. If <code>python</code> is not found, try <code>python3</code>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>6. Commit and push</summary>
+      <div class="details-body">
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git status                 # what changed?
+git diff index.html        # read your own change
+git add index.html
+git commit -m "Add YOURNAME to the ledger"
+git push -u origin add-row-YOURNAME</code></pre></div>
+        <p>A commit is a snapshot with a message and a parent. Write the message in the imperative &mdash; <em>"Add Ana to the ledger"</em>, not <em>"added stuff"</em>. Six months from now the log is the only record of why the file looks the way it does.</p>
+        <p>The <code>-u</code> on the first push links your branch to its copy on GitHub, so later you can just type <code>git push</code>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>7. Open the pull request</summary>
+      <div class="details-body">
+        <p>After the push, GitHub prints a link &mdash; open it. Or go to the repository and click <strong>Compare &amp; pull request</strong>. Fill in the title, create it, then watch the <strong>Verify Ledger Sum</strong> check run.</p>
+        <p>Two outcomes are both useful:</p>
+        <ul class="tight">
+          <li><span class="pass">Green</span> &mdash; your branch adds up on its own. Wait for it to be merged.</li>
+          <li><span class="fail">Red</span> &mdash; read the log. It names the row that is malformed or the amount the total is off by.</li>
+        </ul>
+        <p>Once your PR is merged, <strong>your job is not finished</strong> &mdash; see step 8, because everyone else merging after you invalidates your total.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>8. Sync with main and resolve the conflict</summary>
+      <div class="details-body">
+        <p>Other people keep merging while you work. Pull their changes into your branch:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git switch main
+git pull
+git switch add-row-YOURNAME
+git merge main</code></pre></div>
+        <p>If two of you inserted a row in the same place, Git refuses to guess and stops:</p>
+        <div class="code"><pre><code>Auto-merging index.html
+CONFLICT (content): Merge conflict in index.html
+Automatic merge failed; fix the conflict and then commit the result.</code></pre></div>
+        <p>Find out what is unresolved, open the file, and look for the conflict markers:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git status
+git diff</code></pre></div>
+        <!-- The conflict examples below are escaped on purpose: a literal
+             separator line in this file would make scripts/verify_sum.py report
+             an unresolved merge. Do not "fix" the &#61; entities back to raw
+             characters. -->
+        <p>This is what the conflict really looks like &mdash; <strong>one</strong> hunk, not two, because your row and the total row are neighbours:</p>
+        <div class="conflict">
+          <div class="code"><pre><code>          &lt;tr class="entry-row"&gt;
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+            &lt;td class="name"&gt;Ana&lt;/td&gt;
+            &lt;td class="num"&gt;7&lt;/td&gt;
+            &lt;td class="notes"&gt;first try&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr class="total-row"&gt;
+            &lt;td&gt;Total&lt;/td&gt;
+            &lt;td id="total"&gt;17&lt;/td&gt;
+&#61;&#61;&#61;&#61;&#61;&#61;&#61;
+            &lt;td class="name"&gt;Mihai&lt;/td&gt;
+            &lt;td class="num"&gt;5&lt;/td&gt;
+            &lt;td class="notes"&gt;hello&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr class="total-row"&gt;
+            &lt;td&gt;Total&lt;/td&gt;
+            &lt;td id="total"&gt;15&lt;/td&gt;
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; add-row-mihai
+            &lt;td class="notes"&gt;Sum of the Number column, computed by hand&lt;/td&gt;
+          &lt;/tr&gt;</code></pre></div>
+        </div>
+        <p>Read <em>HEAD</em> as "what my branch says" and <em>add-row-mihai</em> as "what everyone else decided". Everything between the markers is undecided and it is your job to decide it.</p>
+
+        <div class="warn">
+          <p><strong>The trap.</strong> Two lines sit <em>outside</em> the markers: the opening <code>&lt;tr class="entry-row"&gt;</code> at the top and the closing <code>&lt;td class="notes"&gt;Sum of&hellip;</code> plus <code>&lt;/tr&gt;</code> at the bottom. Git kept them because both sides agreed on them &mdash; they appear <strong>once</strong>, not once per side.</p>
+          <p>So the reflex move &mdash; delete the three marker lines, keep everything else &mdash; leaves you with <em>two</em> cells carrying <code>id="total"</code>, one row whose opening tag was consumed by the row above it, and HTML that will not render. The check catches it, but it is worth knowing why.</p>
+        </div>
+
+        <p>What the region should look like once you are done &mdash; two complete participant rows, then one total row:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>          &lt;tr class="entry-row"&gt;
+            &lt;td class="name"&gt;Ana&lt;/td&gt;
+            &lt;td class="num"&gt;7&lt;/td&gt;
+            &lt;td class="notes"&gt;first try&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr class="entry-row"&gt;
+            &lt;td class="name"&gt;Mihai&lt;/td&gt;
+            &lt;td class="num"&gt;5&lt;/td&gt;
+            &lt;td class="notes"&gt;hello&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr class="total-row"&gt;
+            &lt;td&gt;Total&lt;/td&gt;
+            &lt;td id="total"&gt;22&lt;/td&gt;
+            &lt;td class="notes"&gt;Sum of the Number column, computed by hand&lt;/td&gt;
+          &lt;/tr&gt;</code></pre></div>
+
+        <p>Note what happened to the total. Ana's side said <code>17</code> and Mihai's side said <code>15</code>, and <strong>neither is right</strong>: 17 counted Ana but not Mihai, 15 counted Mihai but not Ana. The answer is <code>10 + 7 + 5 = 22</code>, a value that appears on <em>no side of the conflict</em>. You cannot choose your way out of this one; you have to recompute it. That is the whole workshop in one line.</p>
+        <div class="note">
+          <p><strong>Never leave a marker behind.</strong> A stray <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> in the file is committed HTML that a browser will render as text. Before you finish, search the file for <code>&lt;&lt;&lt;&lt;</code>, <code>====</code> and <code>&gt;&gt;&gt;&gt;</code> and make sure none remain.</p>
+        </div>
+        <p>Then verify and finish:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>python scripts/verify_sum.py
+git add index.html
+git commit                 # closes the merge; the message is pre-filled
+git push</code></pre></div>
+        <p>Prefer rebasing? <code>git rebase main</code> instead of <code>git merge main</code>, resolve the same conflict, then <code>git add index.html &amp;&amp; git rebase --continue</code>. Your pull request will need <code>git push --force-with-lease</code> afterwards. Rebase rewrites history, so only do it on your own branch &mdash; never on <code>main</code>.</p>
+        <div class="tip">
+          <p>To abandon a merge that has gone wrong: <code>git merge --abort</code> puts the working tree back the way it was and lets you start over.</p>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Working from a fork instead?</summary>
+      <div class="details-body">
+        <p>Same workflow, two differences. Sync from <code>upstream</code> rather than <code>origin</code>:</p>
+        <div class="code"><button class="copy" type="button">Copy</button><pre><code>git fetch upstream
+git switch add-row-YOURNAME
+git merge upstream/main</code></pre></div>
+        <p>And when you open the pull request, set <strong>base</strong> to <code>darius-f96/mhp-ubb-git-workshop : main</code> and <strong>compare</strong> to <code>YOUR-USERNAME : add-row-YOURNAME</code>.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- =========================================================
+       WHY IT BREAKS
+       ========================================================== -->
+  <section class="card" id="why">
+    <h2>Why the total keeps being wrong</h2>
+    <p class="sub">The single idea this workshop exists to teach.</p>
+
+    <p>Git merges <strong>text</strong>, not <strong>meaning</strong>. It compares lines and, when two branches changed different lines, it combines them confidently and correctly. It has no idea that one of those lines is a sum of the others.</p>
+
+    <p>So this sequence is completely normal and produces a broken file:</p>
+    <ol class="tight">
+      <li><code>main</code> has one row: <code>10</code>. Total: <code>10</code>.</li>
+      <li>Ana branches, adds <code>7</code>, writes total <code>17</code>. Her check passes.</li>
+      <li>Mihai branches from the same <code>main</code>, adds <code>5</code>, writes total <code>15</code>. His check passes too.</li>
+      <li>Ana merges. The file has two rows and total <code>17</code>. Still correct.</li>
+      <li>Mihai merges. Git adds his row without a complaint &mdash; or raises a conflict he resolves by keeping his own total. The file now has three rows summing to <code>22</code> and a total of <code>17</code> or <code>15</code>.</li>
+    </ol>
+
+    <p>Every individual step was reasonable. The result is wrong. This is why projects have automated checks that run <em>after</em> integration, not only before it.</p>
+
+    <div class="note">
+      <p><strong>The fix is always the same:</strong> pull the latest <code>main</code> into your branch, re-add the Number column, write the new total, run <code>python scripts/verify_sum.py</code>, push. Your pull request re-runs the check automatically.</p>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       WHAT THE CI CHECKS
+       ========================================================== -->
+  <section class="card" id="ci">
+    <h2>What the CI check does</h2>
+    <p class="sub"><code>.github/workflows/verify-sum.yml</code> runs on every pull request and on every push to <code>main</code>.</p>
+
+    <p>It reads <code>index.html</code>, sums the <code>class="num"</code> cells, and compares the result with the value in the <code>id="total"</code> cell. It fails on:</p>
+
+    <table class="matrix">
+      <thead>
+        <tr><th>Failure</th><th>Usually means</th><th>Build</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Conflict markers left in the file</td>
+          <td>A merge or rebase was started and never finished. Delete every marker line and keep the content you actually want.</td>
+          <td class="center fail">red</td>
+        </tr>
+        <tr>
+          <td>Declared total &ne; sum of rows</td>
+          <td>You merged someone else's row and did not re-add. The most common case by far.</td>
+          <td class="center fail">red</td>
+        </tr>
+        <tr>
+          <td>Number cell is not a plain integer</td>
+          <td>Units, decimals, spaces or a thousands separator crept in.</td>
+          <td class="center fail">red</td>
+        </tr>
+        <tr>
+          <td>Row does not have exactly three cells</td>
+          <td>A half-deleted row, a leftover from a merge, or an empty Notes cell that was removed entirely instead of being left blank.</td>
+          <td class="center fail">red</td>
+        </tr>
+        <tr>
+          <td>More than one <code>id="total"</code></td>
+          <td>The total row got duplicated while resolving a conflict.</td>
+          <td class="center fail">red</td>
+        </tr>
+        <tr>
+          <td>Row still says <em>Your Name</em></td>
+          <td>The template was committed without being edited.</td>
+          <td class="center fail">red</td>
+        </tr>
+        <tr>
+          <td>The same name and number appear twice</td>
+          <td>A duplicated row. Reported as a warning; the sum check usually catches it too.</td>
+          <td class="center">warn</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Reading a failing run</h3>
+    <p>On your pull request, open <strong>Checks &rarr; Verify Ledger Sum &rarr; Validate Total</strong>. The log names every row it found and tells you the gap:</p>
+    <div class="code"><button class="copy" type="button">Copy</button><pre><code>  Rows:             3
+  Sum of rows:      22
+  Declared total:   17 (line 214)
+  Difference:       -5
+
+FAILED - the declared total is 5 lower than the sum of the rows.
+
+  Most likely cause: two branches were merged and the total was
+  never re-added. Git merged the text correctly - it just cannot
+  know that the Total row means something.
+
+  Fix: add up the Number column yourself and put the result in
+  &lt;td id="total"&gt;22&lt;/td&gt;, then commit and push again.</code></pre></div>
+
+    <p>The check runs on <code>main</code> as well, not just on pull requests. If someone merges with a broken total, <code>main</code> goes red &mdash; a visible, shared signal that integration broke something no single branch did.</p>
+
+    <h3>Useful commands while you are stuck</h3>
+    <table class="matrix">
+      <thead>
+        <tr><th>Command</th><th>What it tells you</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>git status</code></td><td>Which branch you are on, what changed, what is conflicted.</td></tr>
+        <tr><td><code>git diff</code></td><td>Your uncommitted changes, line by line.</td></tr>
+        <tr><td><code>git log --oneline --graph --all</code></td><td>The shape of the history &mdash; worth running after the workshop.</td></tr>
+        <tr><td><code>git restore index.html</code></td><td>Throw away uncommitted changes to one file.</td></tr>
+        <tr><td><code>git merge --abort</code></td><td>Cancel an in-progress merge and go back to how it was.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    Page last edited by whoever merged last. If the total above is wrong, that is not a bug in the
+    page &mdash; it is the exercise. Run <code>python scripts/verify_sum.py</code> and fix it on a branch.
+  </p>
+</footer>
+
+<script>
+  (function () {
+    function flash(btn) {
+      var label = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('is-copied');
+      setTimeout(function () {
+        btn.textContent = label;
+        btn.classList.remove('is-copied');
+      }, 1400);
+    }
+
+    function fallbackCopy(text, btn) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        flash(btn);
+      } catch (err) {
+        btn.textContent = 'Select + Ctrl+C';
+      }
+      document.body.removeChild(ta);
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (btn) {
+      btn.addEventListener('click', function () {
+        var wrap = btn.closest('.code');
+        var pre = wrap && wrap.querySelector('pre');
+        if (!pre) { return; }
+        var text = pre.innerText;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(
+            function () { flash(btn); },
+            function () { fallbackCopy(text, btn); }
+          );
+        } else {
+          fallbackCopy(text, btn);
+        }
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

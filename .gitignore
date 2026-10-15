@@ -1,0 +1,4 @@
+# Running scripts/verify_sum.py locally creates this; it must never be
+# committed, or every participant gets binary files in their git status.
+__pycache__/
+*.py[cod]
